@@ -61,8 +61,8 @@
         };
     } else {
         $$ = function (selector, context) { return $(selector || $d, context); };
-        $b = function (e, fn) { $(e).bind(kdstring + '.jwerty', fn); };
-        $u = function (e, fn) { $(e).unbind(kdstring + '.jwerty', fn) };
+        $b = function (e, fn, eventName /*?*/) { $(e).bind((eventName || kdstring) + '.jwerty', fn); };
+        $u = function (e, fn, eventName /*?*/) { $(e).unbind((eventName || kdstring) + '.jwerty', fn) };
         $f = function (e, ob) { $(e || $d).trigger($.Event(kdstring, ob)); };
     }
 
@@ -379,7 +379,6 @@
                 c = jwertyCode.length - 1,
                 returnValue,
                 jwertyCodeIs,
-                keyUpListener = null,
                 keysHeld = false;
 
             var keyUpListener = function(ev){
@@ -412,8 +411,7 @@
                             returnValue = onFire.call(
                                 callbackContext || this, ev, jwertyCodeIs);
 
-                            If the callback returned false, then we should run
-                            preventDefault();
+                            //If the callback returned false, then we should run preventDefault();
                             if (returnValue === false) ev.preventDefault();
 
                             // Reset i for the next sequence to fire.
@@ -482,18 +480,19 @@
          * jwerty.key
          *
          *  `jwerty.key` will attach an event listener and fire
-         *   `callbackFunction` when `jwertyCode` matches. The event listener is
-         *   attached to `document`, meaning it will listen for any key events
+         *   `onFire` when `jwertyCode` matches. `onRelease` will be fired when
+         *   a key is released after the matching combo is inputted.
+         *   The event listener is attached to `document`, meaning it will listen for any key events
          *   on the page (a global shortcut listener). If `callbackContext` is
-         *   specified then it will be supplied as `callbackFunction`'s context
+         *   specified then it will be supplied as `onFire`'s context
          *   - in other words, the keyword `this` will be set to
-         *   `callbackContext` inside the `callbackFunction` function.
+         *   `callbackContext` inside the `onFire` function.
          *   returns a subscription handle `h`, by which you may undo the binding
          *   by calling `h.unbind()`
          *
          *   @param {Mixed} jwertyCode can be an array, or string of key
          *      combinations, which includes optinals and or sequences
-         *   @param {Function} callbackFunction is a function (or boolean) which
+         *   @param {Function} onFire is a function (or boolean) which
          *      is fired when jwertyCode is matched. Return false to
          *      preventDefault()
          *   @param {Object} callbackContext (Optional) The context to call
@@ -504,7 +503,7 @@
          *      object, or an HTML*Element on which to scope the selector
          *
          */
-        key: function (jwertyCode, callbackFunction, callbackContext /*? this */, selector /*? document */, selectorContext /*? body */) {
+        key: function (jwertyCode, onFire, callbackContext /*? this */, selector /*? document */, selectorContext /*? body */, onRelease /*?*/) {
             // Because callbackContext is optional, we should check if the
             // `callbackContext` is a string or element, and if it is, then the
             // function was called without a context, and `callbackContext` is
@@ -520,10 +519,10 @@
             // If `realSelector` is already a jQuery/Zepto/Ender/DOM element,
             // then just use it neat, otherwise find it in DOM using $$()
             var element = realTypeOf(realSelector, 'element') ? realSelector : $$(realSelector, realSelectorContext);
-            var callback = jwerty.event(jwertyCode, callbackFunction, realcallbackContext);
+            var callback = jwerty.event(jwertyCode, onFire, realcallbackContext, onRelease);
             $b( element, callback );
             
-            return {unbind:function(){ $u( element, callback ) }};
+            return {unbind:function(){ $u( element, callback ); }};
         },
         
         /**

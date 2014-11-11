@@ -2,10 +2,11 @@ QUnit.config.noglobals = true;
 QUnit.config.notrycatch = true;
 QUnit.config.reorder = false;
 
-var buildEvent = function (keyCode, shift, ctrl, alt, meta, dom) {
+var buildEvent = function (keyCode, shift, ctrl, alt, meta, dom, eventName) {
     var ret = document.createEvent('Event');
-
-    ret.initEvent('keydown', true, true);
+    
+    evName = eventName || 'keydown';
+    ret.initEvent(evName, true, true);
     ret.keyCode = keyCode || 65;
     ret.shiftKey = shift || false;
     ret.ctrlKey = ctrl || false;
@@ -14,10 +15,20 @@ var buildEvent = function (keyCode, shift, ctrl, alt, meta, dom) {
     dom = dom || document;
 
     if (document.createEventObject) {
-        return dom.fireEvent('onkeydown', ret);
+        return dom.fireEvent('on'+evName, ret);
     } else {
         return dom.dispatchEvent(ret);
     }
+},
+makeKeydown = function(keyCode, shift, ctrl, alt, meta, dom){
+    buildEvent(keyCode, shift, ctrl, alt, meta, dom);
+},
+makeKeyup = function(keyCode, shift, ctrl, alt, meta, dom){
+    buildEvent(keyCode, shift, ctrl, alt, meta, dom, 'keyup');
+},
+keydownAndUp = function(){
+    makeKeydown.apply(this, arguments);
+    makeKeyup.apply(this, arguments);
 },
 expectKeyEvents = function (count) {
     equal(QUnit['current_testEnvironment'].keyupCount, count, 'Expect ' + count + ' keyup events to fire during test');
@@ -579,11 +590,37 @@ test('Test key binding without element, binding to `document`', function () {
 test('Test unbinding', function(){
     var firings = 0
     var ub = jwerty.key('space', function(){  firings += 1  });
-    buildEvent(32);
-    buildEvent(32);
-    buildEvent(32);
+    keydownAndUp(32);
+    keydownAndUp(32);
+    keydownAndUp(32);
     ub.unbind();
-    buildEvent(32);
-    buildEvent(32);
+    keydownAndUp(32);
+    keydownAndUp(32);
     equal(firings, 3, 'expected only the 3 events before the unbinding to be heard');
+});
+
+test('Test Release Listener', function(){
+    var down = false;
+    jwerty.key('space', function(){ down = true }, null, null, null, function(){ down = false });
+    makeKeydown(32);
+    ok(down, 'should have fired');
+    makeKeyup(32);
+    ok(!down, 'should have released');
+    makeKeydown(32);
+    ok(down, 'should be down');
+    makeKeydown(32);
+    ok(down, 'should still be down');
+    makeKeyup(32);
+    ok(!down, 'should have released');
+});
+
+test("filters out repeat down events that don't come with corresponding up events", function(){
+    var n = 0;
+    jwerty.key('space', function(){ n += 1 });
+    makeKeydown(32);
+    makeKeydown(32);
+    makeKeydown(32);
+    makeKeydown(32);
+    makeKeydown(32);
+    equal(n, 1, 'only one down event should have made it through');
 });
