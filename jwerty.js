@@ -34,7 +34,7 @@
         $b, // Event binding function
         $u, // Event unbinding function
         $f, // Event firing function
-        ke = 'keydown';
+        kdstring = 'keydown';
 
     function realTypeOf(v, s) {
         return (v === null) ? s === 'null'
@@ -47,13 +47,13 @@
         $$ = function (selector, context) {
             return selector ? $.querySelector(selector, context || $) : $;
         };
-        $b = function (e, fn) { e.addEventListener(ke, fn, false); };
-        $u = function (e, fn) { e.removeEventListener(ke, fn, false); };
+        $b = function (e, fn, eventName /*?*/) { e.addEventListener(eventName || kdstring, fn, false); };
+        $u = function (e, fn, eventName /*?*/) { e.removeEventListener(eventName || kdstring, fn, false); };
         $f = function (e, jwertyEv) {
             var ret = $d.createEvent('Event'),
             i;
 
-            ret.initEvent(ke, true, true);
+            ret.initEvent(kdstring, true, true);
 
             for (i in jwertyEv) ret[i] = jwertyEv[i];
 
@@ -61,9 +61,9 @@
         };
     } else {
         $$ = function (selector, context) { return $(selector || $d, context); };
-        $b = function (e, fn) { $(e).bind(ke + '.jwerty', fn); };
-        $u = function (e, fn) { $(e).unbind(ke + '.jwerty', fn) };
-        $f = function (e, ob) { $(e || $d).trigger($.Event(ke, ob)); };
+        $b = function (e, fn) { $(e).bind(kdstring + '.jwerty', fn); };
+        $u = function (e, fn) { $(e).unbind(kdstring + '.jwerty', fn) };
+        $f = function (e, ob) { $(e || $d).trigger($.Event(kdstring, ob)); };
     }
 
     // Private
@@ -343,30 +343,33 @@
          *
          * `jwerty.event` will return a function, which expects the first
          *  argument to be a key event. When the key event matches `jwertyCode`,
-         *  `callbackFunction` is fired. `jwerty.event` is used by `jwerty.key`
+         *  `onFire` is fired. `jwerty.event` is used by `jwerty.key`
          *  to bind the function it returns. `jwerty.event` is useful for
          *  attaching to your own event listeners. It can be used as a decorator
          *  method to encapsulate functionality that you only want to fire after
          *  a specific key combo. If `callbackContext` is specified then it will
-         *  be supplied as `callbackFunction`'s context - in other words, the
+         *  be supplied as `onFire`'s context - in other words, the
          *  keyword `this` will be set to `callbackContext` inside the
-         *  `callbackFunction` function.
+         *  `onFire` function.
+         *
          *
          *   @param {Mixed} jwertyCode can be an array, or string of key
          *      combinations, which includes optinals and or sequences
-         *   @param {Function} callbackFucntion is a function (or boolean) which
+         *   @param {Function} onFire is a function (or boolean) which
          *      is fired when jwertyCode is matched. Return false to
          *      preventDefault()
          *   @param {Object} callbackContext (Optional) The context to call
          *      `callback` with (i.e this)
+         *   @param {Function} onRelease is a function called when the user lets
+         *      go of one of the keys in the final keyCode of the sequence.
          *
          */
-        event: function (jwertyCode, callbackFunction, callbackContext /*? this */) {
-
-            // Construct a function out of callbackFunction, if it is a boolean.
-            if (realTypeOf(callbackFunction, 'boolean')) {
-                var bool = callbackFunction;
-                callbackFunction = function () { return bool; };
+        event: function (jwertyCode, onFire, callbackContext /*? this */, onRelease /*?*/) {
+            
+            // Construct a function out of onFire, if it is a boolean.
+            if (realTypeOf(onFire, 'boolean')) {
+                var bool = onFire;
+                onFire = function () { return bool; };
             }
 
             jwertyCode = new JwertyCode(jwertyCode);
@@ -375,38 +378,55 @@
             var i = 0,
                 c = jwertyCode.length - 1,
                 returnValue,
-                jwertyCodeIs;
+                jwertyCodeIs,
+                keyUpListener = null,
+                keysHeld = false;
 
+            var keyUpListener = function(ev){
+                //this is... heuristic. Ideally the keyUpListener would check to see that the key being released actually undoes the combo that triggered the current step of the sequence. That would take a lot of support code, especially when you need to start tracking which optional fired the event. Not worth it, considering that this will work in 98% of cases.
+                keysHeld = false;
+                if (i == c && onRelease) { //onRelease only fires when this is the last in the sequence, just like onFire
+                    onRelease(ev);
+                }
+                //unbinds itself each time it is triggered because otherwise we cannot ensure it will be unbound by users handling the event binding themselves
+                $u( window, keyUpListener, 'keyup' ); //it is bound to window because we don't actually want it to be specific about where in the document the key is released, if a key is released anywhere, the combo probably doesn't hold any more. Also, there's no way of knowing what element the event callback we're building here is going to be bound to anyway :P
+            };
+            
             // This is the event listener function that gets returned...
-            return function (event) {
+            return function (ev) {
+                //if the incoming event is the same as the last expected combo, we will not accept another firing until we get a keyUp, as such a firing would be indicative of an automatic repeat input, and that isn't always wanted
+                var previousIndex = i == 0 ? 0 : i - 1;
+                if ( !keysHeld || !jwerty.is(jwertyCode, ev, previousIndex) ){ //We DO accept a firing without a keyRelease in the case that the previous event is different to the last, as, say, for the sequence, ctrl+a,ctrl+b,ctrl+a,ctrl+c,ctrl+u,ctrl+s, requring the user to release the the last letter key before putting the next will unnecessarily slow their typing.
+                    // if jwertyCodeIs returns truthy (string)...
+                    if ((jwertyCodeIs = jwerty.is(jwertyCode, ev, i))) {
+                        // ... and this isn't the last key in the sequence,
+                        //key press begins
+                        keysHeld = true;
+                        $b( window, keyUpListener, 'keyup' );
+                        // increment the key in sequence to check.
+                        if (i < c) {
+                            ++i;
+                        // ... or if is the last in the sequence (or the only
+                        // one in sequence), then fire the callback
+                        } else {
+                            returnValue = onFire.call(
+                                callbackContext || this, ev, jwertyCodeIs);
 
-                // if jwertyCodeIs returns truthy (string)...
-                if ((jwertyCodeIs = jwerty.is(jwertyCode, event, i))) {
-                    // ... and this isn't the last key in the sequence,
-                    // incriment the key in sequence to check.
-                    if (i < c) {
-                        ++i;
-                        return;
-                    // ... and this is the last in the sequence (or the only
-                    // one in sequence), then fire the callback
-                    } else {
-                        returnValue = callbackFunction.call(
-                            callbackContext || this, event, jwertyCodeIs);
+                            If the callback returned false, then we should run
+                            preventDefault();
+                            if (returnValue === false) ev.preventDefault();
 
-                        // If the callback returned false, then we should run
-                        // preventDefault();
-                        if (returnValue === false) event.preventDefault();
-
-                        // Reset i for the next sequence to fire.
-                        i = 0;
-                        return;
+                            // Reset i for the next sequence to fire.
+                            i = 0;
+                        }
+                    }else{
+                        // If the event that fired was not the one we were expecting
+                        // , we should reset i to 0.
+                        // unless this combo matches the first in the sequence,
+                        // in which case we should reset i to 1.
+                        i = jwerty.is(jwertyCode, ev) ? 1 : 0;
                     }
                 }
-
-                // If the event didn't hit this time, we should reset i to 0,
-                // that is, unless this combo was the first in the sequence,
-                // in which case we should reset i to 1.
-                i = jwerty.is(jwertyCode, event) ? 1 : 0;
             };
         },
 
@@ -456,6 +476,7 @@
             }
             return returnValue;
         },
+         
 
         /**
          * jwerty.key
