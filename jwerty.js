@@ -382,26 +382,39 @@
                 keysHeld = false;
 
             var keyUpListener = function(ev){
-                //this is... heuristic. Ideally the keyUpListener would check to see that the key being released actually undoes the combo that triggered the current step of the sequence. That would take a lot of support code, especially when you need to start tracking which optional fired the event. Not worth it, considering that this will work in 98% of cases.
+                /* this is... heuristic. Ideally the keyUpListener would check to see that
+                 * the key being released actually undoes the combo that triggered the current
+                 * step of the sequence. That would take a lot of support code, especially when
+                 * you need to start tracking which optional fired the event. Not worth it,
+                 * considering that this will work in 98% of cases. */
                 keysHeld = false;
                 if (i == c && onRelease) { //onRelease only fires when this is the last in the sequence, just like onFire
                     onRelease(ev);
                 }
-                //unbinds itself each time it is triggered because otherwise we cannot ensure it will be unbound by users handling the event binding themselves
-                $u( window, keyUpListener, 'keyup' ); //it is bound to window because we don't actually want it to be specific about where in the document the key is released, if a key is released anywhere, the combo probably doesn't hold any more. Also, there's no way of knowing what element the event callback we're building here is going to be bound to anyway :P
+                /*unbinds itself each time it is triggered because otherwise we cannot ensure it
+                 *will be unbound by users handling the event binding themselves*/
+                $u( document, keyUpListener, 'keyup' ); /*(( it had been bound to document
+                 * because we don't actually want it to be specific about where in the document
+                 * the key is released, if a key is released anywhere, the combo probably doesn't
+                 *  hold any more. Also, there's no way of knowing what element the event callback
+                 * we're building here is going to be bound to anyway :P ))*/
             };
             
             // This is the event listener function that gets returned...
             return function (ev) {
                 //if the incoming event is the same as the last expected combo, we will not accept another firing until we get a keyUp, as such a firing would be indicative of an automatic repeat input, and that isn't always wanted
                 var previousIndex = i == 0 ? 0 : i - 1;
-                if ( !keysHeld || !jwerty.is(jwertyCode, ev, previousIndex) ){ //We DO accept a firing without a keyRelease in the case that the previous event is different to the last, as, say, for the sequence, ctrl+a,ctrl+b,ctrl+a,ctrl+c,ctrl+u,ctrl+s, requring the user to release the the last letter key before putting the next will unnecessarily slow their typing.
+                if ( !keysHeld || !jwerty.is(jwertyCode, ev, previousIndex) ){ /*We DO accept a
+                 * firing without a keyRelease in the case that the previous event is different
+                 * to the last, as, say, for the sequence, ctrl+a,ctrl+b,ctrl+a,ctrl+c,ctrl+u,ctrl+s,
+                 * requring the user to release the the last letter key before putting the next will
+                 * unnecessarily slow their typing. */
                     // if jwertyCodeIs returns truthy (string)...
                     if ((jwertyCodeIs = jwerty.is(jwertyCode, ev, i))) {
                         // ... and this isn't the last key in the sequence,
                         //key press begins
                         keysHeld = true;
-                        $b( window, keyUpListener, 'keyup' );
+                        $b( document, keyUpListener, 'keyup' );
                         // increment the key in sequence to check.
                         if (i < c) {
                             ++i;

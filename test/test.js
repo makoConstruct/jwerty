@@ -2,6 +2,7 @@ QUnit.config.noglobals = true;
 QUnit.config.notrycatch = true;
 QUnit.config.reorder = false;
 
+
 var buildEvent = function (keyCode, shift, ctrl, alt, meta, dom, eventName) {
     var ret = document.createEvent('Event');
     
@@ -21,7 +22,7 @@ var buildEvent = function (keyCode, shift, ctrl, alt, meta, dom, eventName) {
     }
 },
 makeKeydown = function(keyCode, shift, ctrl, alt, meta, dom){
-    buildEvent(keyCode, shift, ctrl, alt, meta, dom);
+    buildEvent(keyCode, shift, ctrl, alt, meta, dom, 'keydown');
 },
 makeKeyup = function(keyCode, shift, ctrl, alt, meta, dom){
     buildEvent(keyCode, shift, ctrl, alt, meta, dom, 'keyup');
@@ -30,8 +31,11 @@ keydownAndUp = function(){
     makeKeydown.apply(this, arguments);
     makeKeyup.apply(this, arguments);
 },
+char = function(oneLetterString){ return oneLetterString.charCodeAt(0) },
+removeEl = function(el){ el.parentElement.removeChild(el) },
 expectKeyEvents = function (count) {
-    equal(QUnit['current_testEnvironment'].keyupCount, count, 'Expect ' + count + ' keyup events to fire during test');
+    var qte = QUnit.config.current.testEnvironment;
+    equal(qte.keyupCount, count, 'Expect ' + count + ' keyup events to fire during test');
 };
 
 module('jwerty', {
@@ -42,8 +46,14 @@ module('jwerty', {
             ok(true, 'jwerty event fired for "' + combo + '"');
         };
         this.input = document.createElement('input');
+        document.body.appendChild(this.input); /* elements must be on the document to ensure the
+            keyup events bound in the jwerty.event method get through to the window element. */
         var self = this;
         listenForKey(this.input, function () { ++self.keyupCount; });
+    },
+    
+    teardown: function(){
+        removeEl(this.input);
     }
 
 });
@@ -109,27 +119,25 @@ test('Test jwerty fires on boolean callback', function () {
 });
 
 test('Test jwerty optional combos', function () {
-    expect(3);
-
+    expect(2);
+    
     jwerty.key([['b', 'a']], this.assertjwerty, this.input);
 
-    // Fire an A key
-    buildEvent(65, false, false, false, false, this.input);
-    // Fire on B key
-    buildEvent(66, false, false, false, false, this.input);
+    keydownAndUp(char('A'), false, false, false, false, this.input);
+    keydownAndUp(char('B'), false, false, false, false, this.input);
 
     // These shouldnt fire
-    buildEvent(63, false, false, false, false, this.input);
-    buildEvent(67, false, false, false, false, this.input);
-    buildEvent(65, true, false, false, false, this.input);
-    buildEvent(66, true, true, false, false, this.input);
-    buildEvent(65, true, true, true, false, this.input);
-    buildEvent(66, true, true, true, true, this.input);
-    buildEvent(65, false, true, true, true, this.input);
-    buildEvent(66, false, false, true, true, this.input);
-    buildEvent(65, false, false, false, true, this.input);
+    // keydownAndUp(63, false, false, false, false, this.input);
+    // keydownAndUp(67, false, false, false, false, this.input);
+    // keydownAndUp(65, true, false, false, false, this.input);
+    // keydownAndUp(66, true, true, false, false, this.input);
+    // keydownAndUp(65, true, true, true, false, this.input);
+    // keydownAndUp(66, true, true, true, true, this.input);
+    // keydownAndUp(65, false, true, true, true, this.input);
+    // keydownAndUp(66, false, false, true, true, this.input);
+    // keydownAndUp(65, false, false, false, true, this.input);
 
-    expectKeyEvents(11);
+    // expectKeyEvents(11);
 });
 
 test('Test jwerty combos with mod characters', function () {
@@ -138,20 +146,20 @@ test('Test jwerty combos with mod characters', function () {
     jwerty.key([['shift+b', '⌃+⌫']], this.assertjwerty, this.input);
 
     // Fire on B key with SHIFT
-    buildEvent(66, true, false, false, false, this.input);
+    keydownAndUp(66, true, false, false, false, this.input);
     // Fire on BACKSPACE key with CTRL
-    buildEvent(8, false, true, false, false, this.input);
+    keydownAndUp(8, false, true, false, false, this.input);
 
     // These shouldnt fire
-    buildEvent(8, true, false, false, false, this.input);
-    buildEvent(8, true, true, false, false, this.input);
-    buildEvent(8, true, true, true, true, this.input);
-    buildEvent(8, false, false, true, true, this.input);
-    buildEvent(66, true, true, false, false, this.input);
-    buildEvent(66, false, true, false, false, this.input);
-    buildEvent(66, true, true, true, false, this.input);
-    buildEvent(66, true, true, true, true, this.input);
-    buildEvent(65, false, false, false, true, this.input);
+    keydownAndUp(8, true, false, false, false, this.input);
+    keydownAndUp(8, true, true, false, false, this.input);
+    keydownAndUp(8, true, true, true, true, this.input);
+    keydownAndUp(8, false, false, true, true, this.input);
+    keydownAndUp(66, true, true, false, false, this.input);
+    keydownAndUp(66, false, true, false, false, this.input);
+    keydownAndUp(66, true, true, true, false, this.input);
+    keydownAndUp(66, true, true, true, true, this.input);
+    keydownAndUp(65, false, false, false, true, this.input);
 
     expectKeyEvents(11);
 });
@@ -162,47 +170,47 @@ test('Test jwerty sequence', function () {
     jwerty.key([['⌃+⇧+⌥+C'], ['⌃+⇧+⌥+O'], ['⌃+⇧+⌥+O'], ['⌃+⇧+⌥+L']], this.assertjwerty, this.input);
 
     // Get to first result with C plus ctrl, shift, alt
-    buildEvent(67, true, true, true, false, this.input);
+    keydownAndUp(67, true, true, true, false, this.input);
     // Get to second result with O plus ctrl, shift, alt
-    buildEvent(79, true, true, true, false, this.input);
+    keydownAndUp(79, true, true, true, false, this.input);
     // Get to second result with O plus ctrl, shift, alt
-    buildEvent(79, true, true, true, false, this.input);
+    keydownAndUp(79, true, true, true, false, this.input);
     // Get to second result with L plus ctrl, shift, alt
-    buildEvent(76, true, true, true, false, this.input);
+    keydownAndUp(76, true, true, true, false, this.input);
 
 
     // Get to first result with C plus ctrl, shift, alt
-    buildEvent(67, true, true, true, false, this.input);
+    keydownAndUp(67, true, true, true, false, this.input);
     // Go back to first result with C plus ctrl, shift, alt
-    buildEvent(67, true, true, true, false, this.input);
+    keydownAndUp(67, true, true, true, false, this.input);
     // Get to second result with O plus ctrl, shift, alt
-    buildEvent(79, true, true, true, false, this.input);
+    keydownAndUp(79, true, true, true, false, this.input);
     // Get to second result with O plus ctrl, shift, alt
-    buildEvent(79, true, true, true, false, this.input);
+    keydownAndUp(79, true, true, true, false, this.input);
     // Get to second result with L plus ctrl, shift, alt
-    buildEvent(76, true, true, true, false, this.input);
+    keydownAndUp(76, true, true, true, false, this.input);
 
     // These shouldnt fire
-    buildEvent(67, true, true, true, false, this.input);
-    buildEvent(79, true, true, true, false, this.input);
-    buildEvent(79, true, true, true, false, this.input);
-    buildEvent(79, true, true, true, false, this.input); // injected key in sequence
-    buildEvent(76, true, true, true, false, this.input);
+    keydownAndUp(67, true, true, true, false, this.input);
+    keydownAndUp(79, true, true, true, false, this.input);
+    keydownAndUp(79, true, true, true, false, this.input);
+    keydownAndUp(79, true, true, true, false, this.input); // injected key in sequence
+    keydownAndUp(76, true, true, true, false, this.input);
 
-    buildEvent(67, true, true, true, false, this.input);
-    buildEvent(79, true, true, true, false, this.input);
-    buildEvent(79, true, true, true, false, this.input);
-    buildEvent(77, true, true, true, false, this.input); // wrong key
+    keydownAndUp(67, true, true, true, false, this.input);
+    keydownAndUp(79, true, true, true, false, this.input);
+    keydownAndUp(79, true, true, true, false, this.input);
+    keydownAndUp(77, true, true, true, false, this.input); // wrong key
 
-    buildEvent(67, true, true, true, false, this.input);
-    buildEvent(79, true, true, true, false, this.input);
-    buildEvent(79, true, true, true, false, this.input);
-    buildEvent(76, true, true, true, true, this.input); // meta key included
+    keydownAndUp(67, true, true, true, false, this.input);
+    keydownAndUp(79, true, true, true, false, this.input);
+    keydownAndUp(79, true, true, true, false, this.input);
+    keydownAndUp(76, true, true, true, true, this.input); // meta key included
 
-    buildEvent(67, true, true, true, false, this.input);
-    buildEvent(79, true, true, false, false, this.input); // Missing alt
-    buildEvent(79, true, true, true, false, this.input);
-    buildEvent(76, true, true, true, false, this.input);
+    keydownAndUp(67, true, true, true, false, this.input);
+    keydownAndUp(79, true, true, false, false, this.input); // Missing alt
+    keydownAndUp(79, true, true, true, false, this.input);
+    keydownAndUp(76, true, true, true, false, this.input);
 
     expectKeyEvents(26);
 });
@@ -213,36 +221,36 @@ test('Test regex style number expansion', function () {
     jwerty.key('[0-9]', this.assertjwerty, this.input);
 
     // 0
-    buildEvent(48, false, false, false, false, this.input);
+    keydownAndUp(48, false, false, false, false, this.input);
     // 1
-    buildEvent(49, false, false, false, false, this.input);
+    keydownAndUp(49, false, false, false, false, this.input);
     // 2
-    buildEvent(50, false, false, false, false, this.input);
+    keydownAndUp(50, false, false, false, false, this.input);
     // 3
-    buildEvent(51, false, false, false, false, this.input);
+    keydownAndUp(51, false, false, false, false, this.input);
     // 4
-    buildEvent(52, false, false, false, false, this.input);
+    keydownAndUp(52, false, false, false, false, this.input);
     // 5
-    buildEvent(53, false, false, false, false, this.input);
+    keydownAndUp(53, false, false, false, false, this.input);
     // 6
-    buildEvent(54, false, false, false, false, this.input);
+    keydownAndUp(54, false, false, false, false, this.input);
     // 7
-    buildEvent(55, false, false, false, false, this.input);
+    keydownAndUp(55, false, false, false, false, this.input);
     // 8
-    buildEvent(56, false, false, false, false, this.input);
+    keydownAndUp(56, false, false, false, false, this.input);
     // 9
-    buildEvent(57, false, false, false, false, this.input);
+    keydownAndUp(57, false, false, false, false, this.input);
 
     // None of these should fire
-    buildEvent(57, true, false, false, false, this.input);
-    buildEvent(57, true, true, false, false, this.input);
-    buildEvent(57, true, true, true, false, this.input);
-    buildEvent(57, true, true, true, true, this.input);
-    buildEvent(57, false, true, true, true, this.input);
-    buildEvent(58, false, false, false, false, this.input);
-    buildEvent(59, false, false, false, false, this.input);
-    buildEvent(47, false, false, false, false, this.input);
-    buildEvent(100, false, false, false, false, this.input);
+    keydownAndUp(57, true, false, false, false, this.input);
+    keydownAndUp(57, true, true, false, false, this.input);
+    keydownAndUp(57, true, true, true, false, this.input);
+    keydownAndUp(57, true, true, true, true, this.input);
+    keydownAndUp(57, false, true, true, true, this.input);
+    keydownAndUp(58, false, false, false, false, this.input);
+    keydownAndUp(59, false, false, false, false, this.input);
+    keydownAndUp(47, false, false, false, false, this.input);
+    keydownAndUp(100, false, false, false, false, this.input);
 
     expectKeyEvents(19);
 });
@@ -253,37 +261,37 @@ test('Test regex style number expansion for complex ranges', function () {
     jwerty.key('ctrl+[num-0-num-9]', this.assertjwerty, this.input);
 
     // 0
-    buildEvent(96, false, true, false, false, this.input);
+    keydownAndUp(96, false, true, false, false, this.input);
     // 1
-    buildEvent(97, false, true, false, false, this.input);
+    keydownAndUp(97, false, true, false, false, this.input);
     // 2
-    buildEvent(98, false, true, false, false, this.input);
+    keydownAndUp(98, false, true, false, false, this.input);
     // 3
-    buildEvent(99, false, true, false, false, this.input);
+    keydownAndUp(99, false, true, false, false, this.input);
     // 4
-    buildEvent(100, false, true, false, false, this.input);
+    keydownAndUp(100, false, true, false, false, this.input);
     // 5
-    buildEvent(101, false, true, false, false, this.input);
+    keydownAndUp(101, false, true, false, false, this.input);
     // 6
-    buildEvent(102, false, true, false, false, this.input);
+    keydownAndUp(102, false, true, false, false, this.input);
     // 7
-    buildEvent(103, false, true, false, false, this.input);
+    keydownAndUp(103, false, true, false, false, this.input);
     // 8
-    buildEvent(104, false, true, false, false, this.input);
+    keydownAndUp(104, false, true, false, false, this.input);
     // 9
-    buildEvent(105, false, true, false, false, this.input);
+    keydownAndUp(105, false, true, false, false, this.input);
 
 
     // None of these should fire
-    buildEvent(57, true, false, false, false, this.input);
-    buildEvent(57, true, true, false, false, this.input);
-    buildEvent(57, true, true, true, false, this.input);
-    buildEvent(57, true, true, true, true, this.input);
-    buildEvent(57, false, true, true, true, this.input);
-    buildEvent(58, false, false, false, false, this.input);
-    buildEvent(59, false, false, false, false, this.input);
-    buildEvent(47, false, false, false, false, this.input);
-    buildEvent(100, false, false, false, false, this.input);
+    keydownAndUp(57, true, false, false, false, this.input);
+    keydownAndUp(57, true, true, false, false, this.input);
+    keydownAndUp(57, true, true, true, false, this.input);
+    keydownAndUp(57, true, true, true, true, this.input);
+    keydownAndUp(57, false, true, true, true, this.input);
+    keydownAndUp(58, false, false, false, false, this.input);
+    keydownAndUp(59, false, false, false, false, this.input);
+    keydownAndUp(47, false, false, false, false, this.input);
+    keydownAndUp(100, false, false, false, false, this.input);
 
     expectKeyEvents(19);
 });
@@ -294,17 +302,17 @@ test('Test regex style number expansion for complex ranges (letters)', function 
     jwerty.key('ctrl+[a-c]+shift', this.assertjwerty, this.input);
 
     // a
-    buildEvent(65, true, true, false, false, this.input);
+    keydownAndUp(65, true, true, false, false, this.input);
     // c
-    buildEvent(67, true, true, false, false, this.input);
+    keydownAndUp(67, true, true, false, false, this.input);
     // b
-    buildEvent(66, true, true, false, false, this.input);
+    keydownAndUp(66, true, true, false, false, this.input);
 
 
     // None of these should fire
-    buildEvent(68, true, true, false, false, this.input);
-    buildEvent(65, true, false, false, false, this.input);
-    buildEvent(57, true, true, false, false, this.input);
+    keydownAndUp(68, true, true, false, false, this.input);
+    keydownAndUp(65, true, false, false, false, this.input);
+    keydownAndUp(57, true, true, false, false, this.input);
 
     expectKeyEvents(6);
 });
@@ -315,74 +323,74 @@ test('(Most importantly) test the konami code', function () {
     jwerty.key([['↑'], ['↑'], ['↓'], ['↓'], ['←'], ['→'], ['←'], ['→'], ['B'], ['a'], ['↩']], this.assertjwerty, this.input);
 
     // Up
-    buildEvent(38, false, false, false, false, this.input);
+    keydownAndUp(38, false, false, false, false, this.input);
     // Up
-    buildEvent(38, false, false, false, false, this.input);
+    keydownAndUp(38, false, false, false, false, this.input);
     // Down
-    buildEvent(40, false, false, false, false, this.input);
+    keydownAndUp(40, false, false, false, false, this.input);
     // Down
-    buildEvent(40, false, false, false, false, this.input);
+    keydownAndUp(40, false, false, false, false, this.input);
     // Left
-    buildEvent(37, false, false, false, false, this.input);
+    keydownAndUp(37, false, false, false, false, this.input);
     // Right
-    buildEvent(39, false, false, false, false, this.input);
+    keydownAndUp(39, false, false, false, false, this.input);
     // Left
-    buildEvent(37, false, false, false, false, this.input);
+    keydownAndUp(37, false, false, false, false, this.input);
     // Right
-    buildEvent(39, false, false, false, false, this.input);
+    keydownAndUp(39, false, false, false, false, this.input);
     // B
-    buildEvent(66, false, false, false, false, this.input);
+    keydownAndUp(66, false, false, false, false, this.input);
     // A
-    buildEvent(65, false, false, false, false, this.input);
+    keydownAndUp(65, false, false, false, false, this.input);
     // Start (Enter)
-    buildEvent(13, false, false, false, false, this.input);
+    keydownAndUp(13, false, false, false, false, this.input);
 
     // These wont fire
      // Up
-    buildEvent(38, false, false, false, false, this.input);
+    keydownAndUp(38, false, false, false, false, this.input);
     // Up
-    buildEvent(38, false, false, false, false, this.input);
+    keydownAndUp(38, false, false, false, false, this.input);
     // Down
-    buildEvent(40, false, false, false, false, this.input);
+    keydownAndUp(40, false, false, false, false, this.input);
     // Down
-    buildEvent(40, false, false, false, false, this.input);
+    keydownAndUp(40, false, false, false, false, this.input);
     // Left
-    buildEvent(37, false, false, false, false, this.input);
+    keydownAndUp(37, false, false, false, false, this.input);
     // Right
-    buildEvent(39, false, false, false, false, this.input);
+    keydownAndUp(39, false, false, false, false, this.input);
     // Left
-    buildEvent(37, false, false, false, false, this.input);
+    keydownAndUp(37, false, false, false, false, this.input);
     // Right
-    buildEvent(39, false, false, false, false, this.input);
+    keydownAndUp(39, false, false, false, false, this.input);
     // A
-    buildEvent(65, false, false, false, false, this.input); // {
+    keydownAndUp(65, false, false, false, false, this.input); // {
     // B                                                    //  Noob
-    buildEvent(66, false, false, false, false, this.input); // }
+    keydownAndUp(66, false, false, false, false, this.input); // }
     // Start (Enter)
-    buildEvent(13, false, false, false, false, this.input);
+    keydownAndUp(13, false, false, false, false, this.input);
 
     // Up
-    buildEvent(38, false, false, false, false, this.input);
+    keydownAndUp(38, false, false, false, false, this.input);
     // Up
-    buildEvent(38, false, false, false, false, this.input);
+    keydownAndUp(38, false, false, false, false, this.input);
     // Down
-    buildEvent(40, false, false, false, false, this.input);
+    keydownAndUp(40, false, false, false, false, this.input);
     // Down
-    buildEvent(40, true, false, false, false, this.input); // Shift
+    keydownAndUp(40, true, false, false, false, this.input); // Shift
     // Left
-    buildEvent(37, false, false, false, false, this.input);
+    keydownAndUp(37, false, false, false, false, this.input);
     // Right
-    buildEvent(39, false, false, false, false, this.input);
+    keydownAndUp(39, false, false, false, false, this.input);
     // Left
-    buildEvent(37, false, false, false, false, this.input);
+    keydownAndUp(37, false, false, false, false, this.input);
     // Right
-    buildEvent(39, false, false, false, false, this.input);
+    keydownAndUp(39, false, false, false, false, this.input);
     // B
-    buildEvent(66, false, false, false, false, this.input);
+    keydownAndUp(66, false, false, false, false, this.input);
     // A
-    buildEvent(65, false, false, false, false, this.input);
+    keydownAndUp(65, false, false, false, false, this.input);
     // Start (Enter)
-    buildEvent(13, false, false, false, false, this.input);
+    keydownAndUp(13, false, false, false, false, this.input);
 
     expectKeyEvents(33);
 });
@@ -393,136 +401,147 @@ test('Test jwerty combos as a string', function () {
     jwerty.key('shift+b/⌃+⌫', this.assertjwerty, this.input);
 
     // Fire on B key with SHIFT
-    buildEvent(66, true, false, false, false, this.input);
+    keydownAndUp(66, true, false, false, false, this.input);
     // Fire on BACKSPACE key with CTRL
-    buildEvent(8, false, true, false, false, this.input);
+    keydownAndUp(8, false, true, false, false, this.input);
 
     // These shouldnt fire
-    buildEvent(8, true, false, false, false, this.input);
-    buildEvent(8, true, true, false, false, this.input);
-    buildEvent(8, true, true, true, true, this.input);
-    buildEvent(8, false, false, true, true, this.input);
-    buildEvent(66, true, true, false, false, this.input);
-    buildEvent(66, false, true, false, false, this.input);
-    buildEvent(66, true, true, true, false, this.input);
-    buildEvent(66, true, true, true, true, this.input);
-    buildEvent(65, false, false, false, true, this.input);
+    keydownAndUp(8, true, false, false, false, this.input);
+    keydownAndUp(8, true, true, false, false, this.input);
+    keydownAndUp(8, true, true, true, true, this.input);
+    keydownAndUp(8, false, false, true, true, this.input);
+    keydownAndUp(66, true, true, false, false, this.input);
+    keydownAndUp(66, false, true, false, false, this.input);
+    keydownAndUp(66, true, true, true, false, this.input);
+    keydownAndUp(66, true, true, true, true, this.input);
+    keydownAndUp(65, false, false, false, true, this.input);
 
     expectKeyEvents(11);
 });
 
 test('Test sequence as a string', function () {
-    expect(3);
-
-    jwerty.key('↑,↑,↓,↓,←,→,←,→,B,A,↩/space', this.assertjwerty, this.input);
-
+    var firingn = 0;
+    jwerty.key('↑,↑,↓,↓,←,→,←,→,B,A,↩/space', function(){firingn+=1}, this.input);
+    
+    var self = this;
+    function doKey(kc){ keydownAndUp(kc, false, false, false, false, self.input) }
+    
     // Up
-    buildEvent(38, false, false, false, false, this.input);
+    doKey(38);
     // Up
-    buildEvent(38, false, false, false, false, this.input);
+    doKey(38);
     // Down
-    buildEvent(40, false, false, false, false, this.input);
+    doKey(40);
     // Down
-    buildEvent(40, false, false, false, false, this.input);
+    doKey(40);
     // Left
-    buildEvent(37, false, false, false, false, this.input);
+    doKey(37);
     // Right
-    buildEvent(39, false, false, false, false, this.input);
+    doKey(39);
     // Left
-    buildEvent(37, false, false, false, false, this.input);
+    doKey(37);
     // Right
-    buildEvent(39, false, false, false, false, this.input);
+    doKey(39);
     // B
-    buildEvent(66, false, false, false, false, this.input);
+    doKey(66);
     // A
-    buildEvent(65, false, false, false, false, this.input);
+    doKey(65);
     // Start (Enter)
-    buildEvent(13, false, false, false, false, this.input);
+    doKey(13);
 
     // Up
-    buildEvent(38, false, false, false, false, this.input);
+    doKey(38);
     // Up
-    buildEvent(38, false, false, false, false, this.input);
+    doKey(38);
     // Down
-    buildEvent(40, false, false, false, false, this.input);
+    doKey(40);
     // Down
-    buildEvent(40, false, false, false, false, this.input);
+    doKey(40);
     // Left
-    buildEvent(37, false, false, false, false, this.input);
+    doKey(37);
     // Right
-    buildEvent(39, false, false, false, false, this.input);
+    doKey(39);
     // Left
-    buildEvent(37, false, false, false, false, this.input);
+    doKey(37);
     // Right
-    buildEvent(39, false, false, false, false, this.input);
+    doKey(39);
     // B
-    buildEvent(66, false, false, false, false, this.input);
+    doKey(66);
     // A
-    buildEvent(65, false, false, false, false, this.input);
+    doKey(65);
     // Space
-    buildEvent(32, false, false, false, false, this.input);
+    doKey(32);
 
     // These wont fire
     // Up
-    buildEvent(38, false, false, false, false, this.input);
+    doKey(38);
     // Up
-    buildEvent(38, false, false, false, false, this.input);
+    doKey(38);
     // Down
-    buildEvent(40, false, false, false, false, this.input);
+    doKey(40);
     // Down
-    buildEvent(40, false, false, false, false, this.input);
+    doKey(40);
     // Left
-    buildEvent(37, false, false, false, false, this.input);
+    doKey(37);
     // Right
-    buildEvent(39, false, false, false, false, this.input);
+    doKey(39);
     // Left
-    buildEvent(37, false, false, false, false, this.input);
+    doKey(37);
     // Right
-    buildEvent(39, false, false, false, false, this.input);
+    doKey(39);
     // A
-    buildEvent(65, false, false, false, false, this.input); // {
-    // B                                                    //  Noob
-    buildEvent(66, false, false, false, false, this.input); // }
+    doKey(65);// {
+    // B      //     Noob
+    doKey(66);// }
     // Start (Enter)
-    buildEvent(13, false, false, false, false, this.input);
+    doKey(13);
 
     // Up
-    buildEvent(38, false, false, false, false, this.input);
+    doKey(38);
     // Up
-    buildEvent(38, false, false, false, false, this.input);
+    doKey(38);
     // Down
-    buildEvent(40, false, false, false, false, this.input);
+    doKey(40);
     // Down
-    buildEvent(40, true, false, false, false, this.input); // Shift
+    doKey(40);
     // Left
-    buildEvent(37, false, false, false, false, this.input);
+    doKey(37);
     // Right
-    buildEvent(39, false, false, false, false, this.input);
+    doKey(39);
     // Left
-    buildEvent(37, false, false, false, false, this.input);
+    doKey(37);
     // Right
-    buildEvent(39, false, false, false, false, this.input);
+    doKey(39);
     // B
-    buildEvent(66, false, false, false, false, this.input);
+    doKey(66);
     // A
-    buildEvent(65, false, false, false, false, this.input);
+    doKey(65);
     // Start (Enter)
-    buildEvent(13, false, false, false, false, this.input);
+    doKey(13);
 
-    expectKeyEvents(44);
+    equal(firingn, 3, 'should have fired three times');
 });
 
 test('Test some weird string combos', function () {
     expect(2);
 
-    jwerty.key('shift++', this.assertjwerty);
+    jwerty.key('shift++', this.assertjwerty, this.input);
 
-    buildEvent(107, true, false, false, false);
+    buildEvent(107, true, false, false, false, this.input);
 
-    jwerty.key('shift+,,+', this.assertjwerty);
+    jwerty.key('shift+,,+', this.assertjwerty, this.input);
 
-    buildEvent(188, true, false, false, false);
-    buildEvent(107, false, false, false, false);
+    buildEvent(188, true, false, false, false, this.input);
+    buildEvent(107, false, false, false, false, this.input);
+});
+
+test('capital letters in combo strings', function(){
+    expect(2);
+    
+    jwerty.key('A', this.assertjwerty, this.input);
+    jwerty.key('a', this.assertjwerty, this.input);
+    
+    keydownAndUp(char('A'), null, null, null, null, this.input);
 });
 
 
@@ -582,8 +601,9 @@ test('Test context passing to bound function context of event function', functio
 test('Test key binding without element, binding to `document`', function () {
     expect(1);
 
-    jwerty.key('space', this.assertjwerty);
+    var ub = jwerty.key('space', this.assertjwerty);
     buildEvent(32, false, false, false, false);
+    ub.unbind();
 });
 
 
@@ -601,14 +621,14 @@ test('Test unbinding', function(){
 
 test('Test Release Listener', function(){
     var down = false;
-    jwerty.key('space', function(){ down = true }, null, null, null, function(){ down = false });
-    makeKeydown(32);
+    jwerty.key('space', function(){ down = true }, this.input, null, null, function(){ down = false });
+    makeKeydown(32, null, null, null, null, this.input);
     ok(down, 'should have fired');
     makeKeyup(32);
     ok(!down, 'should have released');
-    makeKeydown(32);
+    makeKeydown(32, null, null, null, null, this.input);
     ok(down, 'should be down');
-    makeKeydown(32);
+    makeKeydown(32, null, null, null, null, this.input);
     ok(down, 'should still be down');
     makeKeyup(32);
     ok(!down, 'should have released');
@@ -616,11 +636,24 @@ test('Test Release Listener', function(){
 
 test("filters out repeat down events that don't come with corresponding up events", function(){
     var n = 0;
-    jwerty.key('space', function(){ n += 1 });
-    makeKeydown(32);
-    makeKeydown(32);
-    makeKeydown(32);
-    makeKeydown(32);
-    makeKeydown(32);
+    jwerty.key('space', function(){ n += 1 }, this.input);
+    makeKeydown(32, null, null, null, null, this.input);
+    makeKeydown(32, null, null, null, null, this.input);
+    makeKeydown(32, null, null, null, null, this.input);
+    makeKeydown(32, null, null, null, null, this.input);
+    makeKeydown(32, null, null, null, null, this.input);
     equal(n, 1, 'only one down event should have made it through');
+});
+
+test("allows the next input in the sequence without requiring the user to release from the last", function(){
+    
+    var word = "SWORDFISH";
+    var kc = word.split('').map(function(letter){ return 'ctrl+'+letter }).join(',');
+    var firingn = 0;
+    jwerty.key(kc, function(){  firingn += 1  }, this.input);
+    for( var i = 0; i < word.length; ++i ){
+        makeKeydown(word.charCodeAt(i), null, true, null, null, this.input);
+    }
+    
+    equal(firingn, 1, "the callback fired just once");
 });
