@@ -514,7 +514,8 @@
          *      or an HTML*Element on which to bind the eventListener
          *   @param {Mixed} selectorContext can be a string, jQuery/Zepto/Ender
          *      object, or an HTML*Element on which to scope the selector
-         *
+         *   @param {Function} onRelease will be called when the user lets go of
+         *      a key after this binding has been triggered
          */
         key: function (jwertyCode, onFire, callbackContext /*? this */, selector /*? document */, selectorContext /*? body */, onRelease /*?*/) {
             // Because callbackContext is optional, we should check if the
