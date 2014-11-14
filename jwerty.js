@@ -36,12 +36,19 @@
         $f, // Event firing function
         kdstring = 'keydown';
 
+    // function actuallyInstanceOf(v, constructor){
+    //     return (v == null && constructor == null) ||
+    //         v.constructor == constructor || //for the primitives who've no prototype chain
+    //         v instanceof constructor; //for the rest
+    // }
+    // In case you need to check the type heirarchy, uncomment the above function and refactor realTypeOf out in its favor.
     function realTypeOf(v, s) {
         return (v === null) ? s === 'null'
         : (v === undefined) ? s === 'undefined'
         : (v.is && v instanceof $) ? s === 'element'
         : Object.prototype.toString.call(v).toLowerCase().indexOf(s) > 7;
     }
+    
 
     if ($ === $d) {
         $$ = function (selector, context) {

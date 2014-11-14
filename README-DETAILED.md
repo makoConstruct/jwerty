@@ -53,11 +53,14 @@ In other words, the following are the same:
 jwerty.key
 ==========
 
-    jwerty.key(jwertyCode, callbackFunction, [callbackContext]);
+    jwerty.key(jwertyCode, callbackFunction, callbackContext, selector, selectorContext, onRelease);
 
 `jwerty.key` will attach an event listener and fire `callbackFunction` when
-`jwertyCode` matches. The event listener is attached to `document`, meaning
-it will listen for any key events on the page (a global shortcut listener). If
+`jwertyCode` matches. If `selector` is not given, the event listener is attached to `document`,
+meaning it will listen for any key events on the page(a global shortcut
+listener). If `selector` is given, an element target will be saught instead.
+`selectorContext`, if given, is used to search for `selector` within
+`selectorContext`, similar to jQuery's `$('selector', 'context')`. If
 `callbackContext` is specified then it will be supplied as
 `callbackFunction`'s context - in other words, the keyword `this` will be
 set to `callbackContext` inside the `callbackFunction` function.
@@ -72,20 +75,13 @@ set to `callbackContext` inside the `callbackFunction` function.
    key, for example: `jwerty.key('ctrl+V', false)` will disable ctrl+V's default
    behaviour.
 
-
-    jwerty.key(jwertyCode, callbackFunction, [callbackContext], [selector, [selectorContext]]);
-
-`jwerty.key` will attach an event listener and fire `callbackFunction` when
-`jwertyCode` matches. The event listener is attached to `selector`.
-`callbackContext` can be ommited if not needed, and `selector` becomes
-the third argument. `selectorContext` is used to search for `selector`
-within `selectorContext`, similar to jQuery's `$('selector', 'context')`.
-
  - `selector` can be a CSS1/2/3 selector - it will use
    document.querySelectorAll, unless you have jQuery, Zepto or Ender installed,
    in which case it will use those as the selector engine.
+   
  - `selector` can be a DOM element (such as HTMLDivElement), or a jQuery
    element object, or a Zepto element object, or an Ender element object.
+   
  - `selectorContext` has the same rules as `selector`, it can be a
    string, DOM element or jQuery/Zepto/Ender element object.
 
@@ -116,23 +112,23 @@ jwerty.key('ctrl+shift+p', false, '#myInput');
 jwerty.event
 ==========
 
-    jwerty.event(jwertyCode, callbackFunction, [callbackContext]);
+    jwerty.event(jwertyCode, onFire, callbackContext, [onRelease]);
 
 `jwerty.event` will return a function, which expects the first argument to be a
-key event. When the key event matches `jwertyCode`, `callbackFunction`
+key event. When the key event matches `jwertyCode`, `onFire`
 is fired. `jwerty.event` is used by `jwerty.key` to bind the function it returns.
 `jwerty.event` is useful for attaching to your own event listeners. It can be
 used as a decorator method to encapsulate functionality that you only want to
 fire after a specific key combo. If `callbackContext` is specified then it
-will be supplied as `callbackFunction`'s context - in other words, the
+will be supplied as `onFire`'s context - in other words, the
 keyword `this` will be set to `callbackContext` inside the
-`callbackFunction` function.
+`onFire` function.
 
- - If `callbackFunction` returns `false` then preventDefault() will be
+ - If `onFire` returns `false` then preventDefault() will be
    called for the event, in other words - what the browser normally does when
    this key is pressed will not happen.
 
- - If `callbackFunction` can be a boolean (`true` or `false`), rather than an
+ - If `onFire` can be a boolean (`true` or `false`), rather than an
    actual function. If it is a boolean, it will be treated like a function that
    instantly returns that value. This is useful if you just want to disable a
    key, for example: `jwerty.key('ctrl+V', false)` will disable ctrl+V's default
